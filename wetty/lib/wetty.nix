@@ -7,15 +7,16 @@ pkgs.buildNpmPackage {
   src = pkgs.fetchFromGitHub {
     owner = "ToxicPine";
     repo = "wetty";
-    rev = "e48b04b74e958e7fd34f22ab47b99e13d438836d";
-    hash = "sha256-gLg2TA0mQSejtx3REwUC2LBloi8/Ad1uQ8+uityXt2E=";
+    rev = "81d08fbb88ec22cb9a035893a89a6c0aa1222d19";
+    hash = "sha256-5CgmvB5ZI7bXuD8jX4FQ8hsJshl/kzQj3KgSy745f2c=";
   };
 
   postPatch = ''
     cp ${./package-lock.json} package-lock.json
+    substituteInPlace build.js --replace-fail '"pnpm"' '"npx"'
   '';
 
-  npmDepsHash = "sha256-Nz8Non0j/RaErylp2MDk/HqDMeXpaBvdYbKkDszGzG4=";
+  npmDepsHash = "sha256-8yikSum1JZi6IDTZb7sWmoRzVGeZvV8OWWnjp9hmXrU=";
 
   nativeBuildInputs = with pkgs; [
     (python3.withPackages (ps: [ ps.setuptools ]))

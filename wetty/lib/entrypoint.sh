@@ -93,11 +93,15 @@ done < <(jq -c '.[]' /etc/daemons.json)
 ep_user=$(jq -r '.user' /etc/entrypoint.json)
 readarray -t ep_cmd < <(jq -r '.command[]' /etc/entrypoint.json)
 
-ep_uid=$(resolve_uid "$ep_user")
-ep_home="/home/$ep_user"
-ep_path="$ep_home/.nix-profile/bin:$ep_home/.local/state/nix/profiles/home-manager/home-path/bin"
+if [ "$ep_user" = "root" ]; then
+  exec "${ep_cmd[@]}"
+else
+  ep_uid=$(resolve_uid "$ep_user")
+  ep_home="/home/$ep_user"
+  ep_path="$ep_home/.nix-profile/bin:$ep_home/.local/state/nix/profiles/home-manager/home-path/bin"
 
-cd "$ep_home"
-exec setpriv --reuid="$ep_uid" --regid="$ep_uid" --init-groups \
-  env HOME="$ep_home" USER="$ep_user" PATH="$ep_path:$PATH" \
-  "${ep_cmd[@]}"
+  cd "$ep_home"
+  exec setpriv --reuid="$ep_uid" --regid="$ep_uid" --init-groups \
+    env HOME="$ep_home" USER="$ep_user" PATH="$ep_path:$PATH" \
+    "${ep_cmd[@]}"
+fi
