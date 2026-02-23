@@ -16,10 +16,12 @@
 
   home.packages = with pkgs; [
     curl
+    gh
     git
     htop
     ncurses
     nodejs
+    openssh
     ripgrep
     tmux
     vim

@@ -16,9 +16,11 @@
 
   home.packages = (with pkgs; [
     curl
+    gh
     git
     htop
     nodejs
+    openssh
     flyctl
     deno
     tmux
