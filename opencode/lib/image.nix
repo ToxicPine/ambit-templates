@@ -1,46 +1,61 @@
-{ pkgs, users, system, homeActivationPackages, configSources, entrypoint, imageName }:
+{
+  pkgs,
+  users,
+  system,
+  homeActivationPackages,
+  configSources,
+  entrypoint,
+  imageName,
+}:
 
 let
   nixbldCount = 10;
   nixbldUids = builtins.genList (i: i + 30001) nixbldCount;
 
-  userList = builtins.attrValues (builtins.mapAttrs (name: cfg: {
-    inherit name;
-    inherit (cfg) uid;
-  }) users);
+  userList = builtins.attrValues (
+    builtins.mapAttrs (name: cfg: {
+      inherit name;
+      inherit (cfg) uid;
+    }) users
+  );
 
   passwdFile = pkgs.writeText "passwd" (
     "root:x:0:0:root:/root:/bin/bash\n"
     + "nobody:x:65534:65534:nobody:/nonexistent:/bin/false\n"
     + builtins.concatStringsSep "\n" (
-      map (i: "nixbld${toString i}:x:${toString (30000 + i)}:30000:Nix build user ${toString i}:/var/empty:/bin/false")
-        (builtins.genList (i: i + 1) nixbldCount)
-    ) + "\n"
+      map (
+        i:
+        "nixbld${toString i}:x:${toString (30000 + i)}:30000:Nix build user ${toString i}:/var/empty:/bin/false"
+      ) (builtins.genList (i: i + 1) nixbldCount)
+    )
+    + "\n"
     + builtins.concatStringsSep "\n" (
-      map (u: "${u.name}:x:${toString u.uid}:${toString u.uid}::/home/${u.name}:/bin/bash")
-        userList
-    ) + "\n"
+      map (u: "${u.name}:x:${toString u.uid}:${toString u.uid}::/home/${u.name}:/bin/bash") userList
+    )
+    + "\n"
   );
 
   groupFile = pkgs.writeText "group" (
     "root:x:0:\n"
-    + "nixbld:x:30000:" + builtins.concatStringsSep "," (
+    + "nixbld:x:30000:"
+    + builtins.concatStringsSep "," (
       map (i: "nixbld${toString i}") (builtins.genList (i: i + 1) nixbldCount)
-    ) + "\n"
+    )
+    + "\n"
     + "nobody:x:65534:\n"
-    + builtins.concatStringsSep "\n" (
-      map (u: "${u.name}:x:${toString u.uid}:")
-        userList
-    ) + "\n"
+    + builtins.concatStringsSep "\n" (map (u: "${u.name}:x:${toString u.uid}:") userList)
+    + "\n"
   );
 
   usersJson = pkgs.writeText "users.json" (builtins.toJSON userList);
 
-  activationsJson = pkgs.writeText "activations.json" (builtins.toJSON (
-    builtins.mapAttrs (_: pkg: "${pkg}") homeActivationPackages
-  ));
+  activationsJson = pkgs.writeText "activations.json" (
+    builtins.toJSON (builtins.mapAttrs (_: pkg: "${pkg}") homeActivationPackages)
+  );
 
-  entrypointJson = pkgs.writeText "entrypoint.json" (builtins.toJSON system.entrypoint);
+  entrypointJson = pkgs.writeText "entrypoint.json" (builtins.toJSON (system.entrypoint // {
+    userRebuild = system.userRebuild or true;
+  }));
 
   daemonsJson = pkgs.writeText "daemons.json" (builtins.toJSON system.daemons);
 in
@@ -53,8 +68,9 @@ pkgs.dockerTools.buildLayeredImageWithNixDb {
   contents = [
     pkgs.dockerTools.binSh
     pkgs.dockerTools.caCertificates
-  ] ++ system.packages
-    ++ (builtins.attrValues homeActivationPackages);
+  ]
+  ++ system.packages
+  ++ (builtins.attrValues homeActivationPackages);
 
   fakeRootCommands = ''
     mkdir -p etc/nixcfg etc/nix
@@ -70,9 +86,7 @@ pkgs.dockerTools.buildLayeredImageWithNixDb {
     ln -s ${pkgs.coreutils}/bin/env usr/bin/env
 
     mkdir -p etc/nixcfg/lib
-    ${builtins.concatStringsSep "\n" (
-      map (src: "cp ${src.path} etc/nixcfg/${src.name}") configSources
-    )}
+    ${builtins.concatStringsSep "\n" (map (src: "cp ${src.path} etc/nixcfg/${src.name}") configSources)}
 
     ${builtins.concatStringsSep "\n" (
       map (u: ''
@@ -94,7 +108,11 @@ pkgs.dockerTools.buildLayeredImageWithNixDb {
       "NIX_PATH=nixpkgs=flake:nixpkgs"
       "HOME=/root"
     ];
-    ExposedPorts = { "${toString system.entrypoint.port}/tcp" = {}; };
-    Volumes = { "/data" = {}; };
+    ExposedPorts = {
+      "${toString system.entrypoint.port}/tcp" = { };
+    };
+    Volumes = {
+      "/data" = { };
+    };
   };
 }

@@ -14,20 +14,23 @@
     };
   };
 
-  home.packages = (with pkgs; [
-    curl
-    gh
-    git
-    htop
-    nodejs
-    openssh
-    flyctl
-    deno
-    tmux
-    vim
-  ]) ++ (with pkgs-unstable; [
-    opencode
-  ]);
+  home.packages =
+    (with pkgs; [
+      bun
+      curl
+      gh
+      git
+      htop
+      nodejs
+      openssh
+      flyctl
+      deno
+      tmux
+      vim
+    ])
+    ++ (with pkgs-unstable; [
+      opencode
+    ]);
 
   programs.git = {
     enable = true;

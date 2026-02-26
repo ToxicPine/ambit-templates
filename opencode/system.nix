@@ -2,13 +2,33 @@
 
 {
   imageName = "lazycoder";
+  userRebuild = false;
 
   daemons = [
     # { name = "my-agent"; command = [ "my-agent" ]; user = "user"; }
+    {
+      name = "user-rebuild";
+      command = [ ./lib/user-rebuild.sh ];
+      user = "*";
+    }
+    {
+      name = "setup-opencode-agenda";
+      command = [ ./lib/setup-opencode-agenda.sh ];
+      user = "*";
+    }
   ];
 
   entrypoint = {
-    command = [ "opencode" "web" "--hostname" "0.0.0.0" "--port" "3000" "--cors" "*" ];
+    command = [
+      "opencode"
+      "web"
+      "--hostname"
+      "0.0.0.0"
+      "--port"
+      "3000"
+      "--cors"
+      "*"
+    ];
     user = "user";
     port = 3000;
   };
