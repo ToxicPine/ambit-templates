@@ -16,6 +16,11 @@
       command = [ ./lib/setup-opencode-agenda.sh ];
       user = "*";
     }
+    {
+      name = "setup-ambit-cli";
+      command = [ ./lib/setup-ambit-cli.sh ];
+      user = "*";
+    }
   ];
 
   entrypoint = {
