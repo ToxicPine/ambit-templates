@@ -12,11 +12,6 @@ MARKER="$OPENCODE_DIR/.ambit-cli-installed"
 
 mkdir -p "$SKILLS_DIR"
 
-# --- Install ambit CLI via nix profile ---
-if ! command -v ambit >/dev/null 2>&1; then
-  nix profile install github:ToxicPine/ambit
-fi
-
 # --- Skill: clone ambit-skills repo and install ambit-cli skill ---
 if [ ! -d "$SKILLS_DIR/ambit-cli" ]; then
   tmpdir=$(mktemp -d)
