@@ -1,10 +1,11 @@
 #!/bin/sh
 echo "CDP: Starting Chrome Headless"
 
+PROXY_URL="${AMBIT_OUTBOUND_PROXY:-$ROUTER_PROXY}"
 PROXY_ARGS=""
-if [ -n "$ROUTER_PROXY" ]; then
-  echo "CDP: Using proxy ${ROUTER_PROXY}"
-  PROXY_ARGS="--proxy-server=${ROUTER_PROXY}"
+if [ -n "$PROXY_URL" ]; then
+  echo "CDP: Using proxy ${PROXY_URL}"
+  PROXY_ARGS="--proxy-server=${PROXY_URL}"
 fi
 
 # Bind to 0.0.0.0 for Flycast compatibility (Fly Proxy handles IPv6 translation)
