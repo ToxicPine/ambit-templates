@@ -1,175 +1,68 @@
-# dumbcomputer
+# OpenCode on Ambit
 
-A declarative NixOS + Home Manager container image for Fly.io. Everything is built with pure nix — no Dockerfile.
+A persistent [OpenCode](https://opencode.ai) workspace that runs in the cloud and follows you across devices. 
 
-## Structure
+You can start a coding session on your laptop, then continue on your phone — same workspace, same state, nothing to sync.
 
-```
-system.nix        — image name, system packages, entrypoint command, background daemons
-users.nix         — user accounts with UIDs and optional per-user HM overrides
-home.nix          — shared Home Manager config applied to all users
-fly.toml          — Fly.io deployment config
-flake.nix         — wiring (you shouldn't need to touch this)
-lib/image.nix     — OCI image builder (plumbing)
-lib/entrypoint.sh — runtime boot script (plumbing)
-```
+## Why This Exists
 
-Edit `system.nix`, `users.nix`, and `home.nix` to configure your machine. The `lib/` directory is infrastructure — you shouldn't need to modify it.
+OpenCode is an agent-driven IDE that's normally tied to whatever machine you run it on. When you close your laptop, your session disappears.
 
-## Prerequisites
+This template runs OpenCode on [Ambit](https://github.com/ToxicPine/ambit) as a persistent web workspace on your private network. Your session survives reboots, you can access it from any of your devices using the browser (connection via Tailscale), and it stays invisible to the public internet.
 
-- [Nix](https://nixos.org/download/) with flakes enabled
-- [Fly.io CLI](https://fly.io/docs/flyctl/install/) (`flyctl`)
-- A Fly.io app and volume already created
+**You get seamless mobile and desktop handoff.** This gives you a real development environment that moves with you instead of being stuck on your hardware, i.e. terminal sessions stay alive when you close the tab and conversations with agents continue where you left off. 
 
-## Build
+You can start debugging on your laptop, close the browser, and pick it up on your phone to find the same terminals, same context, and same work in progress waiting for you.
 
-```sh
-nix build
-```
+## What You Get
 
-This produces a gzipped OCI tarball at `./result`.
+- **OpenCode Web UI** at `http://<name>.<network>` — accessible from any device on your Tailscale network
+- **Automatic Suspend/Resume** — the machine suspends when idle and wakes on the next HTTP request, so you only pay for what you use
+- **Pre-Configured Environment** — git, node, bun, deno, gh, tmux, vim, curl, and more, all declaratively configured
+- **Self-Orchestation Plugin** pre-installed — OpenClaw-style self-orchestration built into your OpenCode instance
+- **Customizable** — edit `home.nix` to add packages, change shell config, or add programs, then run `rebuild`
 
-## Push to Fly Registry
+## Setup
 
-Use [skopeo](https://github.com/containers/skopeo) to push directly from the nix-built tarball — no Docker daemon required:
+You can deploy OpenCode to [Ambit](https://github.com/ToxicPine/ambit), which wraps Fly.io.
 
-```sh
-nix-shell -p skopeo --run \
-  "skopeo copy \
-    --dest-creds x:$(fly auth token) \
-    docker-archive:$(nix build --no-link --print-out-paths) \
-    docker://registry.fly.io/$(nix eval --raw .#default.imageName 2>/dev/null || echo lazycoder):latest"
+```bash
+npx skills add ToxicPine/ambit-skills --skill ambit-cli  # optional, but helpful for AI agents
+npx @cardelli/ambit create lab
+npx @cardelli/ambit deploy my-ide.lab --template ToxicPine/ambit-templates/opencode
 ```
 
-Or step by step:
+Open `http://my-ide.lab` on any device on your Tailscale network.
 
-```sh
-# 1. build
-nix build
+## Bonus: Cloud Browser on Your Private Network
 
-# 2. push (the username is literally "x", the token is the password)
-nix-shell -p skopeo --run \
-  "skopeo copy \
-    --dest-creds x:$(fly auth token) \
-    docker-archive:./result \
-    docker://registry.fly.io/lazycoder:latest"
+You can deploy Playwright, and even computer-use agents, using [Chromatic](../chromatic/) on the same Ambit network.
+
+```bash
+npx @cardelli/ambit deploy my-browser.lab --template ToxicPine/ambit-templates/chromatic
 ```
 
-## Deploy
+Normally, running computer-use agents to automatically debug software against a local dev server from the cloud means setting up ngrok or Cloudflare tunnels, which is frustrating and comes with security risk. With Chromatic on Ambit, the cloud browser can access `http://localhost:3000` in your Ambit OpenCode, or even your local dev device, without any fuss.
 
-```sh
-fly deploy
-```
+## Default Specs (Configurable)
 
-Or with [ambit](https://www.npmjs.com/package/@cardelli/ambit) for private Tailscale networks:
+| | |
+|---|---|
+| CPU | 2x shared |
+| Memory | 2 GB |
+| Disk | 16 GB persistent volume |
+| Auto stop | Suspend when idle |
+| Auto start | Wake on HTTP request |
 
-```sh
-npx @cardelli/ambit deploy lazycoder --network supercomputer
-```
-
-## Configuration
-
-### system.nix
-
-Defines what the machine does:
-
-- `imageName` — name of the OCI image (should match your Fly app name)
-- `userRebuild` — whether the entrypoint blocks on rebuilding user Home Manager configs at boot (see [Reload Behaviour](#reload-behaviour) below)
-- `entrypoint` — the foreground process (`command`, `user`, `port`)
-- `daemons` — background processes started after Home Manager activation (see [Daemons](#daemons) below)
-- `packages` — system-level packages available to all users (these are infrastructure; user tools go in `home.nix`)
-
-### users.nix
-
-Declares users as an attrset. Each user needs a `uid`. Optional `home` attribute lets you add per-user Home Manager overrides:
-
-```nix
-{
-  alice = {
-    uid = 1000;
-    home = { pkgs, ... }: {
-      programs.git.userName = "Alice";
-      home.packages = [ pkgs.python3 ];
-    };
-  };
-  bob = { uid = 1001; };
-}
-```
-
-### home.nix
-
-Shared Home Manager module applied to every user. Put common tools, shell config, and program settings here. Uses stable nixpkgs by default; `pkgs-unstable` is available for packages from nixpkgs-unstable.
-
-## Daemons
-
-Background processes are declared in `system.nix` under `daemons`. Each daemon has a `name`, a `command`, and an optional `user` field:
-
-```nix
-daemons = [
-  { name = "my-agent"; command = [ "my-agent" "--flag" ]; user = "alice"; }
-  { name = "setup";    command = [ ./lib/setup.sh ];      user = "*"; }
-];
-```
-
-The `user` field controls who the daemon runs as:
-
-| Value | Behaviour |
-|-------|-----------|
-| `"alice"` | Runs once as user `alice` |
-| `["alice" "bob"]` | Runs once per listed user |
-| `"*"` | Runs once per user defined in `users.nix` |
-| _(omitted)_ | Runs as root |
-
-**Path vs string commands:** If a command argument is a Nix path literal (e.g. `./lib/setup.sh`), Nix copies the file into the store and makes it an executable script at build time. If it's a string (e.g. `"my-agent"`), it's resolved at runtime via `PATH`. This means setup scripts live in `lib/` as `.sh` files referenced by path, while installed programs are referenced by name as strings.
-
-## Reload Behaviour
-
-Each user gets a persistent home directory at `/data/homes/<user>` (bind-mounted to `/home/<user>`) and a copy of the flake config at `~/.nixcfg`. Users can modify their config and run `rebuild` to apply changes interactively.
-
-On boot, Home Manager must be activated for each user. There are two strategies, controlled by `userRebuild` in `system.nix`:
-
-### Fast startup (`userRebuild = false`)
-
-The entrypoint always applies the **image-baked** Home Manager activation — no network access, no evaluation, instant. If the user has modified `~/.nixcfg`, a background daemon (`lib/user-rebuild.sh`) detects the drift and runs `home-manager switch --flake .` **after** the entrypoint is already serving. The app is available immediately; the user's custom config catches up in the background.
-
-This is the recommended default for production.
-
-### Blocking startup (`userRebuild = true`)
-
-The entrypoint checks whether the user's `~/.nixcfg` differs from the image default (by comparing `flake.nix`, `flake.lock`, `home.nix`, `system.nix`, `users.nix`). If changes are detected, it runs `home-manager switch --flake .` **before** starting daemons or the foreground entrypoint. The app won't start until the rebuild finishes, which may require downloading packages from the Nix cache.
-
-Use this when the user's environment must be fully up-to-date before the app starts.
-
-## How It Works
-
-At boot, the entrypoint script:
-
-1. Mounts an overlayfs on `/nix` (image store as lower, Fly volume as upper) so nix store changes survive across sessions but reset on redeploy
-2. Starts `nix-daemon` for multi-user nix access
-3. For each user: bind-mounts persistent home from `/data/homes/<user>`, copies the flake config on first boot, and runs Home Manager activation (see [Reload Behaviour](#reload-behaviour))
-4. Starts background daemons (see [Daemons](#daemons))
-5. Execs the foreground entrypoint as the configured user
-
-Users can SSH in and run `rebuild` (aliased to `cd ~/.nixcfg && home-manager switch --flake .`) to apply changes interactively. These changes persist across restarts via the Fly volume.
-
-## Flake Layout
+## Files
 
 ```
-flake.nix
-├── inputs
-│   ├── nixpkgs (stable)
-│   ├── nixpkgs-unstable
-│   ├── flake-parts
-│   └── home-manager
-├── outputs
-│   ├── packages.default        → OCI image tarball (lib/image.nix)
-│   ├── homeConfigurations.*    → per-user HM configs (home.nix + users.nix overrides)
-│   └── lib.mkHome              → helper to build a HM config for a username
-└── helpers (internal)
-    ├── resolveCommandArg       → path literal → writeShellScript, string → passthrough
-    ├── collectScriptSources    → gathers path-literal scripts from daemons for /etc/nixcfg
-    └── resolveDaemons          → maps resolveCommandArg over all daemon commands
+system.nix   — entrypoint, daemons, system packages
+home.nix     — user packages and shell config (edit this)
+users.nix    — user accounts
+fly.toml     — Fly.io deployment config
+flake.nix    — Nix flake wiring (you shouldn't need to touch this)
+lib/         — plumbing (entrypoint, image builder, setup scripts)
 ```
 
-The flake wires together three user-facing files (`system.nix`, `users.nix`, `home.nix`) with two plumbing files (`lib/image.nix`, `lib/entrypoint.sh`). Daemon command arguments are resolved at build time: Nix path literals (like `./lib/setup.sh`) are copied into the Nix store as executable scripts, while plain strings are left for runtime PATH resolution. The `configSources` list (files baked into `/etc/nixcfg` in the image) is automatically derived from the static flake files plus any path-literal scripts in daemons.
+> For details on the Nix image builder, daemon system, reload behaviour, and flake layout, see [TECHNICAL.md](./TECHNICAL.md).
