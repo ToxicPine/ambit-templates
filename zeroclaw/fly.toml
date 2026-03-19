@@ -1,0 +1,21 @@
+app = "zeroclaw-agent"
+primary_region = "ord"
+
+[build]
+  image = "cardellier/zeroclaw:latest"
+
+[mounts]
+  source = "data"
+  destination = "/data"
+  initial_size = "16gb"
+
+[http_service]
+  internal_port = 42617
+  force_https = false
+  auto_stop_machines = "suspend"
+  auto_start_machines = true
+  min_machines_running = 0
+
+[vm]
+  size = "shared-cpu-2x"
+  memory = 2048
