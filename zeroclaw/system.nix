@@ -1,34 +1,25 @@
-{ pkgs, zeroclaw, ... }:
+{ pkgs, pkgs-unstable, zeroclaw, mkScript, ... }:
 
 {
-  imageName = "zeroclaw";
+  imageName = "registry.fly.io/zeroclaw-3iyz8v83";
   userRebuild = false;
 
-  daemons = [
-    {
-      name = "user-rebuild";
-      command = [ ./lib/user-rebuild.sh ];
-      user = "*";
-    }
-    {
-      name = "setup-ambit-cli";
-      command = [ ./lib/setup-ambit-cli.sh ];
-      user = "*";
-    }
-  ];
+  config = {
+    ExposedPorts = {
+      "42617/tcp" = { };
+    };
+  };
 
   entrypoint = {
-    command = [
-      "zeroclaw"
-      "gateway"
-      "--bind"
-      "0.0.0.0"
-      "--port"
-      "42617"
-    ];
+    name = "zeroclaw";
+    command = zeroclaw;
+    args = [ "daemon" ];
     user = "user";
-    port = 42617;
   };
+
+  daemons = [
+    { name = "user-rebuild"; command = mkScript ./lib/user-rebuild.sh; user = "*"; }
+  ];
 
   packages = with pkgs; [
     bashInteractive
@@ -51,13 +42,11 @@
     psmisc
     ripgrep
     rsync
-    sqlite
     tree
     unzip
     util-linux
     which
     xz
     zip
-    zeroclaw
   ];
 }

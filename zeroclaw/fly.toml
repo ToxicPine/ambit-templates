@@ -1,21 +1,28 @@
-app = "zeroclaw-agent"
-primary_region = "ord"
+app = "zeroclaw-3iyz8v83"
+primary_region = "lhr"
 
 [build]
-  image = "cardellier/zeroclaw:latest"
+  image = "docker.io/cardellier/zeroclaw:latest"
+
+[env]
+  ZEROCLAW_ALLOW_PUBLIC_BIND = "true"
+  ZEROCLAW_GATEWAY_HOST = "0.0.0.0"
+  ZEROCLAW_GATEWAY_PORT = "42617"
 
 [mounts]
-  source = "data"
+  source = "zeroclaw_data"
   destination = "/data"
-  initial_size = "16gb"
-
-[http_service]
-  internal_port = 42617
-  force_https = false
-  auto_stop_machines = "suspend"
-  auto_start_machines = true
-  min_machines_running = 0
 
 [vm]
-  size = "shared-cpu-2x"
-  memory = 2048
+  memory = "2048mb"
+  cpu_kind = "shared"
+  cpus = 1
+
+[[services]]
+  internal_port = 42617
+  protocol = "tcp"
+  auto_stop_machines = "off"
+  auto_start_machines = false
+
+  [[services.ports]]
+    port = 80

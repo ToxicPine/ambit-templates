@@ -1,4 +1,4 @@
-{ pkgs, pkgs-unstable, zeroclaw, ... }:
+{ pkgs, zeroclaw, ... }:
 
 {
   home.stateVersion = "25.11";
@@ -16,28 +16,17 @@
 
   home.packages =
     (with pkgs; [
-      bun
       curl
-      gcc
       gh
       git
-      gnumake
       htop
-      nodejs
       openssh
-      flyctl
-      python3
-      deno
       tmux
       vim
     ])
-    ++ [
-      zeroclaw
-    ];
+    ++ [ zeroclaw ];
 
-  programs.git = {
-    enable = true;
-  };
+  programs.git.enable = true;
 
   programs.tmux = {
     enable = true;

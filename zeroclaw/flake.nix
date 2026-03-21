@@ -1,18 +1,18 @@
 {
-  description = "zeroclaw — NixOS Home Manager on Fly.io";
+  description = "zeroclaw — personal AI assistant on Fly.io";
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-25.11";
     nixpkgs-unstable.url = "github:NixOS/nixpkgs/nixos-unstable";
-    flake-parts.url = "github:hercules-ci/flake-parts";
     home-manager = {
       url = "github:nix-community/home-manager/release-25.11";
       inputs.nixpkgs.follows = "nixpkgs";
     };
+    inthesky.url = "github:toxicpine/inthesky";
   };
 
   outputs =
-    inputs@{ flake-parts, ... }:
+    inputs:
     let
       system = "x86_64-linux";
       pkgs = inputs.nixpkgs.legacyPackages.${system};
@@ -20,130 +20,34 @@
 
       zeroclaw = pkgs.stdenv.mkDerivation {
         pname = "zeroclaw";
-        version = "0.5.0";
+        version = "0.5.4";
+
         src = pkgs.fetchurl {
-          url = "https://github.com/ToxicPine/zeroclaw/releases/download/v0.5.0/zeroclaw-x86_64-unknown-linux-gnu.tar.gz";
-          sha256 = "1y0f7i5imxcp3gd33bh5z15nwcjyh1wqxqmfc6dhd8g0a0k1igzg";
+          url = "https://github.com/zeroclaw-labs/zeroclaw/releases/download/v0.5.4/zeroclaw-x86_64-unknown-linux-gnu.tar.gz";
+          sha256 = "0jcpwrc2m13lx64ayw690bq8if6khxb5l3w4xcvk696s8ibppfjl";
         };
-        sourceRoot = ".";
+
         nativeBuildInputs = [ pkgs.autoPatchelfHook ];
         buildInputs = [ pkgs.stdenv.cc.cc.lib ];
+
+        sourceRoot = ".";
+
         installPhase = ''
           mkdir -p $out/bin
-          cp zeroclaw $out/bin/zeroclaw
-          chmod +x $out/bin/zeroclaw
+          install -m 0755 zeroclaw $out/bin/zeroclaw
         '';
+
+        meta.mainProgram = "zeroclaw";
       };
-
-      users = import ./users.nix;
-      sysConfig = import ./system.nix { inherit pkgs zeroclaw; };
-
-      # Daemon command args are either:
-      #   path  (./lib/foo.sh) — file baked into store as executable script
-      #   string ("my-agent")  — runtime command resolved via PATH
-      resolveCommandArg =
-        arg:
-        if builtins.isPath arg then
-          pkgs.writeShellScript (builtins.baseNameOf (toString arg)) (builtins.readFile arg)
-        else
-          arg;
-
-      collectScriptSources =
-        daemons:
-        builtins.concatMap (
-          daemon:
-          builtins.concatMap (
-            arg:
-            if builtins.isPath arg then
-              [
-                {
-                  name = "lib/${builtins.baseNameOf (toString arg)}";
-                  path = arg;
-                }
-              ]
-            else
-              [ ]
-          ) daemon.command
-        ) daemons;
-
-      resolveDaemons =
-        daemons:
-        builtins.map (
-          daemon:
-          daemon
-          // {
-            command = builtins.map resolveCommandArg daemon.command;
-          }
-        ) daemons;
-
-      mkHome =
-        username:
-        inputs.home-manager.lib.homeManagerConfiguration {
-          inherit pkgs;
-          extraSpecialArgs = { inherit pkgs-unstable zeroclaw; };
-          modules = [
-            ./home.nix
-            {
-              home.username = username;
-              home.homeDirectory = "/home/${username}";
-            }
-          ]
-          ++ (if users.${username} ? home then [ users.${username}.home ] else [ ]);
-        };
-
-      homeConfigurations = builtins.mapAttrs (name: _: mkHome name) users;
     in
-    flake-parts.lib.mkFlake { inherit inputs; } {
-      systems = [ system ];
-
-      perSystem =
-        { ... }:
-        {
-          packages.default = import ./lib/image.nix {
-            inherit pkgs users;
-            imageName = sysConfig.imageName;
-            system = sysConfig // {
-              daemons = resolveDaemons sysConfig.daemons;
-            };
-            homeActivationPackages = builtins.mapAttrs (_: hc: hc.activationPackage) homeConfigurations;
-            entrypoint = pkgs.writeShellScript "entrypoint" (builtins.readFile ./lib/entrypoint.sh);
-            configSources = [
-              {
-                name = "flake.nix";
-                path = ./flake.nix;
-              }
-              {
-                name = "flake.lock";
-                path = ./flake.lock;
-              }
-              {
-                name = "home.nix";
-                path = ./home.nix;
-              }
-              {
-                name = "system.nix";
-                path = ./system.nix;
-              }
-              {
-                name = "users.nix";
-                path = ./users.nix;
-              }
-              {
-                name = "lib/image.nix";
-                path = ./lib/image.nix;
-              }
-              {
-                name = "lib/entrypoint.sh";
-                path = ./lib/entrypoint.sh;
-              }
-            ]
-            ++ collectScriptSources sysConfig.daemons;
-          };
-        };
-
-      flake = {
-        lib = { inherit mkHome; };
-        inherit homeConfigurations;
-      };
+    inputs.inthesky.lib.mkFlake {
+      inherit system pkgs;
+      home-manager = inputs.home-manager;
+      userPartitionMount = "/data";
+      extraArgs = { inherit pkgs-unstable zeroclaw; };
+      systemConfig = import ./system.nix;
+      sharedHomeConfig = ./home.nix;
+      userConfig = ./users;
+      flakeRoot = ./.;
     };
 }
