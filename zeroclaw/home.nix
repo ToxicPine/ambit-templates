@@ -1,4 +1,4 @@
-{ pkgs, zeroclaw, ... }:
+{ pkgs, zeroclaw, agent-browser, ... }:
 
 {
   home.stateVersion = "25.11";
@@ -24,7 +24,7 @@
       tmux
       vim
     ])
-    ++ [ zeroclaw ];
+    ++ [ zeroclaw agent-browser ];
 
   programs.git.enable = true;
 

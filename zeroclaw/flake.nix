@@ -9,6 +9,7 @@
       inputs.nixpkgs.follows = "nixpkgs";
     };
     inthesky.url = "github:toxicpine/inthesky";
+    llm-agents.url = "github:numtide/llm-agents.nix";
   };
 
   outputs =
@@ -44,7 +45,10 @@
       inherit system pkgs;
       home-manager = inputs.home-manager;
       userPartitionMount = "/data";
-      extraArgs = { inherit pkgs-unstable zeroclaw; };
+      extraArgs = {
+        inherit pkgs-unstable zeroclaw;
+        agent-browser = inputs.llm-agents.packages.${system}.agent-browser;
+      };
       systemConfig = import ./system.nix;
       sharedHomeConfig = ./home.nix;
       userConfig = ./users;
