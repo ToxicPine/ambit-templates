@@ -62,7 +62,7 @@ For project-specific dependencies, prefer **per-project Nix flakes** over instal
 
 1. In the project root, run `nix flake init` to scaffold a `flake.nix`
 2. Define a `devShell` with the project's dependencies
-3. Enter the shell with `nix develop` (or use `direnv` with `use flake`)
+3. Add `.envrc` with `use flake` and run `direnv allow`
 
 Example `flake.nix` for a Node.js project using [flake-parts](https://flake.parts):
 
@@ -85,6 +85,8 @@ Example `flake.nix` for a Node.js project using [flake-parts](https://flake.part
 ```
 
 Reserve `home.nix` for tools you need everywhere (editors, git, CLI utilities).
+
+This image already has `direnv`, `nix-direnv`, and `direnv-instant` configured. `direnv-instant` replaces direnv's normal shell hook, while `nix-direnv` stays enabled alongside it for Nix flake caching and gcroots. For projects, add `.envrc` with `use flake`, then run `direnv allow`.
 
 ## Important notes
 

@@ -1,7 +1,11 @@
-{ pkgs, pkgs-unstable, ... }:
+{ inputs, pkgs, pkgs-unstable, ... }:
 
 {
   home.stateVersion = "25.11";
+
+  imports = [
+    inputs.direnv-instant.homeModules.direnv-instant
+  ];
 
   programs.home-manager.enable = true;
 
@@ -35,6 +39,15 @@
   programs.git = {
     enable = true;
   };
+
+  # direnv-instant replaces direnv's normal shell hook, but still relies on
+  # direnv itself. Keep nix-direnv enabled alongside it for cached flake envs.
+  programs.direnv = {
+    enable = true;
+    nix-direnv.enable = true;
+  };
+
+  programs.direnv-instant.enable = true;
 
   programs.tmux = {
     enable = true;

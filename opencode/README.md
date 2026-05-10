@@ -18,8 +18,9 @@ You can start debugging on your laptop, close the browser, and pick it up on you
 
 - **OpenCode Web UI** at `http://<name>.<network>` — accessible from any device on your Tailscale network
 - **Automatic Suspend/Resume** — the machine suspends when idle and wakes on the next HTTP request, so you only pay for what you use
-- **Pre-Configured Environment** — git, node, bun, deno, gh, tmux, vim, curl, and more, all declaratively configured
+- **Pre-Configured Environment** — git, node, bun, deno, gh, tmux, vim, curl, `direnv`, `nix-direnv`, and more, all declaratively configured
 - **Self-Orchestation Plugin** pre-installed — OpenClaw-style self-orchestration built into your OpenCode instance
+- **Instant Project Shells** — `direnv-instant` replaces direnv's normal shell hook so prompts stay responsive, while `nix-direnv` adds Nix-specific caching and gcroots
 - **Customizable** — edit `home.nix` to add packages, change shell config, or add programs, then run `rebuild`
 
 ## Setup
@@ -33,6 +34,16 @@ npx @cardelli/ambit deploy my-ide.lab --template ToxicPine/ambit-templates/openc
 ```
 
 Open `http://my-ide.lab` on any device on your Tailscale network.
+
+## Project Environments
+
+Project-specific dependencies should live in a repo-local flake instead of your global `home.nix`.
+
+1. Add a `flake.nix` with a `devShell`.
+2. Add an `.envrc` containing `use flake`.
+3. Run `direnv allow`.
+
+This image is wired the way `direnv-instant` expects: it replaces direnv's normal shell integration, but still uses `direnv` underneath. `nix-direnv` is enabled alongside it for Nix flake caching and gcroots, so a plain `use flake` is the right project-level `.envrc`.
 
 ## Bonus: Cloud Browser on Your Private Network
 
